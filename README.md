@@ -4,6 +4,28 @@ Train a small model that chooses among a changing list of text options.
 
 A Jev-like model takes a piece of text and a list of `N` text options. It returns one probability for each option. It does this in one pass instead of writing an answer word by word. [Jev](https://typesafe.ai/blog/introducing-system-one-models-and-jev) is TypeSafe's commercial model for this kind of task. TypeSafe has not published its design. This repository is an independent starter model with the same input and output shape.
 
+## Demo
+
+The same option-attention head can score controller buttons from image patches. [This ten-second film](docs/jevre-demo-10s-bgm.mp4) joins two selected five-second windows: live `deadly_corridor` combat on the seven Doom buttons, then a chess controller walking to and playing moves with five keys. The diagram shows the tensors used for each decision. The Doom window came from the supplied joint checkpoint, which averaged 0.60 kills and -97.50 reward across its ten recorded episodes. The chess window came from the stronger chess-only checkpoint, which scored 4 wins, 46 draws and 0 losses in 50 sampled games against a random mover, but 0 wins, 2 draws and 48 losses against Stockfish level 0. The windows were selected for activity and are not typical-play or competence claims.
+
+<video src="docs/jevre-demo-10s-bgm.mp4" controls width="960"></video>
+
+Install the game extras and record a fresh 640 by 480 Doom trace from the released joint checkpoint:
+
+```sh
+uv pip install -e '.[games]'
+python examples/doom/play.py examples/checkpoints/joint-imitation.pt --episodes 10 --game-seconds 35.3 --device cpu --capture-resolution 640x480 --output runs/doom.mp4 --trace runs/doom-trace.json
+```
+
+Render the trace in the same visual layout. This writes a silent film because the author-owned soundtrack source is not part of the repository.
+
+```sh
+(cd examples/film && npm install && npx playwright install chromium)
+examples/film/make-film.sh runs/doom-trace.json runs/doom-film.mp4 10
+```
+
+The release includes the [Doom example](examples/doom/README.md), the [chess example](examples/chess/README.md), the single-game checkpoints and the shared 12-option checkpoint. Both games import the visual scorer from `jevlike.vision`; there is no second model copy in either example.
+
 ## Architecture
 
 Each option becomes a query vector, which is a short list of numbers representing its text. The query assigns attention weights to the context tokens. Those weights make one context vector for that option. A shared dot product turns each option and context pair into one score. A softmax, which converts scores into probabilities that sum to one, runs across the options.
